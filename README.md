@@ -5,11 +5,11 @@ A modern, full-stack dating app.
 iLike is a sleek, modern dating app designed for swipe-based discovery, chat, and meaningful connections. The app features clean UI, smooth navigation, and robust API services.
 
 ## Stack	Technologies
-Mobile App	Flutter (Material 2, Custom Theming, Google Fonts, Native Splash)
-Web Frontend	React + TypeScript + Tailwind CSS
-Backend API	Node.js + Express + MongoDB (MongoDB Atlas or Compass)
-Auth	JWT (planned Firebase for chat/auth integration)
-Real-Time Chat	Socket.io or Firebase (upcoming)
+**Mobile App	Flutter:** (Material 3, Custom Theming, Google Fonts, Bloc)
+**Web Frontend:**	React + TypeScript + Tailwind CSS
+**Backend API:**	Node.js + Express + MongoDB (MongoDB Atlas or Compass)
+**Auth:**	JWT (planned Firebase for chat/auth integration)
+**Real-Time Chat:**	Socket.io 
 
 
 
@@ -81,15 +81,18 @@ frontend/
 
 ## 🚀 How to Run
 Mobile App (Flutter)
+```bash
 flutter pub get
 flutter run
 
 Web Frontend (React)
+```bash
 cd frontend
 npm install
 npm run dev
 
 Backend API (Node.js + Express)
+```bash
 cd backend
 npm install
 npm run dev
