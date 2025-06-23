@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { Eye, EyeOff, Mail, Lock, User, Sparkles } from 'lucide-react';
 
-interface FormData {
+export interface FormData {
   name: string;
   email: string;
   password: string;
@@ -12,7 +13,8 @@ interface AuthFormProps {
   formData: FormData;
   isLoading: boolean;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSubmit: () => void;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  error?: string;
 }
 
 const AuthForm: React.FC<AuthFormProps> = ({
@@ -20,30 +22,50 @@ const AuthForm: React.FC<AuthFormProps> = ({
   formData,
   isLoading,
   onInputChange,
-  onSubmit
+  onSubmit,
+  error
 }) => {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      onSubmit();
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const form = e.currentTarget.closest('form');
+      if (form) {
+        const formEvent = new Event('submit', { cancelable: true, bubbles: true }) as unknown as FormEvent<HTMLFormElement>;
+        form.dispatchEvent(formEvent as unknown as Event);
+      }
     }
   };
 
   return (
-    <>
-      {/* Form header */}
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-white mb-2">
-          {isLogin ? 'Welcome Back!' : 'Join iLike'}
-        </h2>
-        <p className="text-white/70">
-          {isLogin ? 'Sign in to continue your journey' : 'Create your account to get started'}
-        </p>
-      </div>
+    <div className="space-y-6">
+      <form 
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit(e);
+        }}
+        className="space-y-6"
+      >
+        {/* Form header */}
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            {isLogin ? 'Welcome Back!' : 'Join iLike'}
+          </h2>
+          <p className="text-white/70">
+            {isLogin ? 'Sign in to continue your journey' : 'Create your account to get started'}
+          </p>
+        </div>
 
-      {/* Form fields */}
-      <div className="space-y-6">
+        {/* Error message */}
+        {error && (
+          <div className="bg-red-500/20 border border-red-500 text-red-100 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {/* Form fields */}
+        <div className="space-y-6">
         {/* Name field (signup only) */}
         {!isLogin && (
           <div className="relative group">
@@ -110,8 +132,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
 
         {/* Submit button */}
         <button
-          type="button"
-          onClick={onSubmit}
+          type="submit"
           disabled={isLoading}
           className="w-full py-4 bg-gradient-to-r from-pink-500 to-red-500 text-white font-semibold rounded-2xl hover:from-pink-600 hover:to-red-600 focus:outline-none focus:ring-4 focus:ring-white/20 transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg relative overflow-hidden group"
         >
@@ -128,8 +149,9 @@ const AuthForm: React.FC<AuthFormProps> = ({
           )}
           <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out"></div>
         </button>
-      </div>
-    </>
+        </div>
+      </form>
+    </div>
   );
 };
 

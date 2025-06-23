@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import type { LoginCredentials } from '@/services/userService';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import AuthHeader from './AuthHeader';
 import AuthForm from './AuthForm';
 import AuthToggle from './AuthToggle';
-import { useNavigate } from 'react-router-dom';
 
-interface FormData {
+type FormData = LoginCredentials & {
   name: string;
-  email: string;
-  password: string;
-}
+};
 
 const AuthApp: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,45 +21,45 @@ const AuthApp: React.FC = () => {
     email: '',
     password: ''
   });
+  const [error, setError] = useState('');
 
+  const { login, register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/';
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    // Clear error when user starts typing
+    if (error) setError('');
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setIsLoading(true);
-
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    navigate('/home');
-    return;
-    
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
-    const payload = isLogin 
-      ? { email: formData.email, password: formData.password }
-      : formData;
+    setError('');
 
     try {
-      // Replace with your actual API call
-      console.log(`${isLogin ? 'Login' : 'Signup'} attempt:`, payload);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Success handling - replace with your logic
-      alert(`${isLogin ? 'Login' : 'Signup'} successful!`);
-      
-      // Reset form or redirect
-      setFormData({ name: '', email: '', password: '' });
-      
-    } catch (error) {
-      console.error('Auth error:', error);
-      alert('Authentication failed. Please try again.');
+      if (isLogin) {
+        // Handle login
+        const { email, password } = formData;
+        await login({ email, password });
+        toast.success('Logged in successfully!');
+        navigate(from, { replace: true });
+      } else {
+        // Handle registration
+        const { name, email, password } = formData;
+        await register({ name, email, password });
+        toast.success('Account created successfully!');
+        navigate('/home', { replace: true });
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
