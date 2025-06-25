@@ -1,11 +1,10 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import Dashboard from "@/pages/admin/Dashboard";
 
 // Lazy load pages for better performance
 const AuthPage = lazy(() => import("@/pages/AuthPage"));
-// const HomePage = lazy(() => import("@/pages/HomePage"));
+const HomePage = lazy(() => import("@/pages/HomePage"));
 const AdminRoutes = lazy(() => import("@/routes/AdminRoutes"));
 
 // Loading component for Suspense fallback
@@ -30,7 +29,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route path="/home" element={<Dashboard/>} />
+          <Route path="/home" element={<HomePage/>} />
           <Route path="/" element={<Navigate to="/home" replace />} />
         </Route>
 
