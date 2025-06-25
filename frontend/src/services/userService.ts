@@ -1,4 +1,4 @@
-import api from './api';
+import api from "./api";
 
 export interface User {
   _id?: string;
@@ -6,6 +6,8 @@ export interface User {
   email: string;
   password?: string;
   isAdmin?: boolean;
+  bio?: string;
+  avatar?: string;
   // Add other user properties as needed
 }
 
@@ -14,7 +16,7 @@ export interface LoginCredentials {
   password: string;
 }
 
-export interface RegisterData extends Omit<User, '_id'> {
+export interface RegisterData extends Omit<User, "_id"> {
   password: string;
 }
 
@@ -26,30 +28,51 @@ export interface AuthResponse {
 export const authService = {
   // Register a new user
   async register(userData: RegisterData): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/users/register', userData);
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
+    const response = await api.post<AuthResponse>("/users/register", userData);
+    const { token, user } = response.data;
+    if (token) {
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
     }
     return response.data;
   },
 
   // Login user
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/users/login', credentials);
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
+    const response = await api.post<AuthResponse>("/users/login", credentials);
+    const { token, user } = response.data;
+    if (token) {
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
     }
     return response.data;
   },
 
   // Logout user
   logout(): void {
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     // Redirect to login page or home page
-    window.location.href = '/login';
+    window.location.href = "/auth";
   },
 
-  // Get current user profile
+  // Get auth token
+  getToken(): string | null {
+    return localStorage.getItem("token");
+  },
+
+  // Check if user is authenticated
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem("token");
+  },
+
+  // Get current user profile (me)
+  async getCurrentUser(): Promise<User> {
+    const response = await api.get<User>("/users/me");
+    return response.data;
+  },
+
+  // Get user profile (other user) 
   async getProfile(userId: string): Promise<User> {
     const response = await api.get<User>(`/users/profile/${userId}`);
     return response.data;
@@ -63,7 +86,7 @@ export const authService = {
 
   // Get all users (for admin)
   async getAllUsers(): Promise<User[]> {
-    const response = await api.get<User[]>('/users');
+    const response = await api.get<User[]>("/users");
     return response.data;
   },
 
@@ -81,15 +104,5 @@ export const authService = {
   async getMatches(userId: string): Promise<User[]> {
     const response = await api.get<User[]>(`/users/matches?userId=${userId}`);
     return response.data;
-  },
-
-  // Check if user is authenticated
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem('token');
-  },
-
-  // Get auth token
-  getToken(): string | null {
-    return localStorage.getItem('token');
   },
 };
