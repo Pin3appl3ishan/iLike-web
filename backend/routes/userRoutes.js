@@ -4,6 +4,7 @@ const {
   register,
   login,
   getProfile,
+  getCurrentUser,
   updateProfile,
   getAllUsers,
   likeUser,
@@ -18,6 +19,7 @@ router.post("/login", login);
 
 // Protected routes (requires valid token to access)
 router.get("/", verifyToken, getAllUsers);
+router.get("/me", verifyToken, getCurrentUser);
 
 // router.get("/profile/:id", verifyToken, getProfile);
 // router.put("/profile/:id", verifyToken, updateProfile);
