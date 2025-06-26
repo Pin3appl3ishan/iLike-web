@@ -39,6 +39,11 @@ const AuthApp: React.FC = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+    
+    // Prevent multiple submissions
+    if (isLoading) return;
+    
     setIsLoading(true);
     setError('');
 
@@ -46,9 +51,23 @@ const AuthApp: React.FC = () => {
       if (isLogin) {
         // Handle login
         const { email, password } = formData;
-        await login({ email, password });
+        console.log('Attempting login with:', { email });
+        
+        const { user } = await login({ email, password });
+        console.log('Login successful, user:', user);
+        
         toast.success('Logged in successfully!');
-        navigate(from, { replace: true });
+        
+        // Determine redirect path
+        let redirectPath = '/';
+        if (user?.isAdmin) {
+          redirectPath = '/admin/dashboard';  // Changed to match the admin route structure
+        } else {
+          redirectPath = from === '/' ? '/home' : from;
+        }
+        
+        console.log('Redirecting to:', redirectPath);
+        navigate(redirectPath, { replace: true });
       } else {
         // Handle registration
         const { name, email, password } = formData;
@@ -57,6 +76,7 @@ const AuthApp: React.FC = () => {
         navigate('/home', { replace: true });
       }
     } catch (err) {
+      console.error('Authentication error:', err);
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       setError(errorMessage);
       toast.error(errorMessage);
