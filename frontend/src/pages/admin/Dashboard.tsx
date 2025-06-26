@@ -1,10 +1,22 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 
 const Dashboard = () => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/auth', { replace: true });
+    } catch (error) {
+      console.error('Failed to log out', error);
+    }
+  };
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="bg-indigo-800 text-white w-64 p-4">
+      <div className="bg-indigo-800 text-white w-64 p-4 relative min-h-screen">
         <h2 className="text-2xl font-bold mb-8">Admin Panel</h2>
         <nav>
           <ul className="space-y-2">
@@ -29,6 +41,19 @@ const Dashboard = () => {
               </Link>
             </li>
           </ul>
+          
+          {/* Logout Button */}
+          <div className="absolute bottom-0 left-0 right-0 p-4">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 mt-4 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Logout</span>
+            </button>
+          </div>
         </nav>
       </div>
 
