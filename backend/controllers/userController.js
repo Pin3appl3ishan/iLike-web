@@ -1,73 +1,161 @@
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const User = require("../models/user");
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import User from "../models/user.js";
 
 /** Generate a signed JWT for a user */
-const generateToken = (user) => {
+export const generateToken = (user) => {
   return jwt.sign(
-    { id: user._id, email: user.email, name: user.name, isAdmin: user.isAdmin },
+    {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      isAdmin: user.isAdmin,
+      hasCompletedProfile: user.hasCompletedProfile || false,
+    },
     process.env.JWT_SECRET,
-    { expiresIn: "1h" }
+    { expiresIn: "24h" }
   );
 };
 
-exports.register = async (req, res) => {
+// @desc    Register a new user
+// @route   POST /api/users/register
+// @access  Public
+export const register = async (req, res) => {
   const { name, email, password, bio, avatar } = req.body;
+
   try {
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email",
+      });
+    }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new user
     const newUser = new User({
       name,
       email,
       password: hashedPassword,
-      bio,
-      avatar,
+      bio: bio || "",
+      avatar: avatar || "",
+      hasCompletedProfile: false,
     });
 
     await newUser.save();
-    res.status(201).json(
-      {
-        token,
-        user: {
-          id: newUser._id,
-          name: newUser.name,
-          email: newUser.email,
-          isAdmin: newUser.isAdmin,
-        },
+
+    // Generate token
+    const token = generateToken(newUser);
+
+    // Return response
+    res.status(201).json({
+      success: true,
+      token,
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        isAdmin: newUser.isAdmin || false,
       },
-      { message: "User registered successfully" }
-    );
+      message: "User registered successfully",
+    });
   } catch (error) {
     res.status(500).json({ error: "Error registering user" });
   }
 };
 
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
+  console.log("Login request received:", {
+    body: req.body,
+    headers: req.headers,
+  });
+
   const { email, password } = req.body;
-  console.log("Login attempt:", { email });
+
+  // Validate request body
+  if (!email || !password) {
+    console.error("Missing email or password");
+    return res.status(400).json({
+      success: false,
+      message: "Email and password are required",
+      received: { email: !!email, password: !!password },
+    });
+  }
+
   try {
+    console.log("Looking for user with email:", email);
     const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
+    if (!user) {
+      console.error("User not found for email:", email);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    console.log("User found, checking password...");
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(400).json({ message: "Invalid credentials" });
 
+    if (!isMatch) {
+      console.error("Password does not match for user:", email);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    console.log("Authentication successful, generating token...");
     const token = generateToken(user);
+
+    const userResponse = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin || false,
+      hasCompletedProfile: user.hasCompletedProfile || false,
+      profile: user.profile || null,
+    };
+
+    console.log("Login successful for user:", userResponse.email);
     res.status(200).json({
+      success: true,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        isAdmin: user.isAdmin,
-      },
+      user: userResponse,
     });
   } catch (error) {
-    res.status(500).json({ error: "Error logging in" });
+    console.error("Login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error logging in",
+      error: error.message,
+    });
   }
 };
 
-exports.getProfile = async (req, res) => {
+// @desc    Get current user's profile
+// @route   GET /api/users/me
+// @access  Private
+export const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching current user profile" });
+  }
+};
+
+// @desc    Get user profile by ID
+// @route   GET /api/users/profile/:id
+// @access  Private
+export const getProfile = async (req, res) => {
   const targetId = req.params.id || req.userId; // from the verifyToken middleware
   try {
     const user = await User.findById(targetId).select("-password"); // exclude password from the response
@@ -82,7 +170,10 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-exports.updateProfile = async (req, res) => {
+// @desc    Update user profile
+// @route   PUT /api/users/profile/:id
+// @access  Private
+export const updateProfile = async (req, res) => {
   console.log("📤 Update profile hit");
   try {
     const updates = req.body;
@@ -102,8 +193,10 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// return all users (excluding the one making request)
-exports.getAllUsers = async (req, res) => {
+// @desc    Get all users (excluding the current user)
+// @route   GET /api/users
+// @access  Private
+export const getAllUsers = async (req, res) => {
   try {
     const currentUserId = req.user?.id; // from the verifyToken
     const users = await User.find({ _id: { $ne: currentUserId } }).select(
@@ -138,7 +231,10 @@ const updateLikeRelationship = async (currentUserId, targetUserId, action) => {
   await targetUser.save();
 };
 
-exports.likeUser = async (req, res) => {
+// @desc    Like a user
+// @route   POST /api/users/like/:id
+// @access  Private
+export const likeUser = async (req, res) => {
   try {
     if (req.userId === req.params.id) {
       return res.status(400).json({ message: "You can't like yourself" });
@@ -155,7 +251,10 @@ exports.likeUser = async (req, res) => {
   }
 };
 
-exports.dislikeUser = async (req, res) => {
+// @desc    Dislike a user
+// @route   POST /api/users/dislike/:id
+// @access  Private
+export const dislikeUser = async (req, res) => {
   try {
     if (req.userId === req.params.id) {
       return res.status(400).json({ message: "You can't dislike yourself" });
@@ -173,9 +272,11 @@ exports.dislikeUser = async (req, res) => {
 };
 
 /**
- * Get mutual matches (users you like who also like you back)
+ * @desc    Get mutual matches (users you like who also like you back)
+ * @route   GET /api/users/matches
+ * @access  Private
  */
-exports.getMatches = async (req, res) => {
+export const getMatches = async (req, res) => {
   try {
     const currentUser = await User.findById(req.userId); // assuming req.userId is available in req.user.id
 

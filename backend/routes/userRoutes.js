@@ -1,6 +1,5 @@
-const express = require("express");
-const router = express.Router();
-const {
+import express from 'express';
+import { 
   register,
   login,
   getProfile,
@@ -9,29 +8,30 @@ const {
   getAllUsers,
   likeUser,
   dislikeUser,
-  getMatches,
-} = require("../controllers/userController");
+  getMatches 
+} from '../controllers/userController.js';
+import { authenticateToken } from '../middleware/auth.js';
 
-const verifyToken = require("../middleware/verifyToken");
+const router = express.Router();
 
-router.post("/register", register);
-router.post("/login", login);
+// Public routes
+router.post('/register', register);
+router.post('/login', login);
 
 // Protected routes (requires valid token to access)
-router.get("/", verifyToken, getAllUsers);
-router.get("/me", verifyToken, getCurrentUser);
+router.get('/', authenticateToken, getAllUsers);
+router.get('/me', authenticateToken, getCurrentUser);
 
-// router.get("/profile/:id", verifyToken, getProfile);
-// router.put("/profile/:id", verifyToken, updateProfile);
-router
-  .route("/profile/:id")
-  .get(verifyToken, getProfile)
-  .put(verifyToken, updateProfile);
+// Profile routes
+router.route('/profile/:id')
+  .get(authenticateToken, getProfile)
+  .put(authenticateToken, updateProfile);
 
-router.post("/like/:id", verifyToken, likeUser);
+// Like/Dislike routes
+router.post('/like/:id', authenticateToken, likeUser);
+router.post('/dislike/:id', authenticateToken, dislikeUser);
 
-router.post("/dislike/:id", verifyToken, dislikeUser);
+// Matches route
+router.get('/matches', authenticateToken, getMatches);
 
-router.get("/matches", verifyToken, getMatches);
-
-module.exports = router;
+export default router;

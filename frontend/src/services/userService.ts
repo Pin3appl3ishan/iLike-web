@@ -5,9 +5,17 @@ export interface User {
   name: string;
   email: string;
   password?: string;
-  isAdmin?: boolean;
+  isAdmin: boolean;  // Changed from optional to required
   bio?: string;
   avatar?: string;
+  hasCompletedProfile?: boolean;
+  profile?: {
+    gender?: string;
+    interests?: string[];
+    age?: number;
+    bio?: string;
+    profilePicture?: string;
+  };
   // Add other user properties as needed
 }
 
@@ -16,8 +24,9 @@ export interface LoginCredentials {
   password: string;
 }
 
-export interface RegisterData extends Omit<User, "_id"> {
+export interface RegisterData extends Omit<User, "_id" | 'isAdmin'> {
   password: string;
+  isAdmin?: boolean;
 }
 
 export interface AuthResponse {
@@ -39,13 +48,41 @@ export const authService = {
 
   // Login user
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>("/users/login", credentials);
-    const { token, user } = response.data;
-    if (token) {
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+    try {
+      console.log('Sending login request with:', credentials);
+      const response = await api.post<AuthResponse>("/users/login", credentials);
+      console.log('Login response received:', response.data);
+      
+      const { token, user } = response.data;
+      if (token) {
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+      } else {
+        console.error('No token received in login response');
+        throw new Error('Authentication failed: No token received');
+      }
+      return response.data;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      const errorData = error && typeof error === 'object' && 'response' in error
+        ? error.response as { data?: unknown; status?: number; headers?: unknown }
+        : null;
+      
+      console.error('Login error:', {
+        message: errorMessage,
+        response: errorData?.data,
+        status: errorData?.status,
+        headers: errorData?.headers
+      });
+      
+      // Re-throw with a more specific error if possible
+      if (errorData?.data && typeof errorData.data === 'object' && errorData.data !== null) {
+        const data = errorData.data as { message?: string };
+        throw new Error(data.message || errorMessage);
+      }
+      
+      throw new Error(errorMessage);
     }
-    return response.data;
   },
 
   // Logout user
@@ -68,8 +105,34 @@ export const authService = {
 
   // Get current user profile (me)
   async getCurrentUser(): Promise<User> {
-    const response = await api.get<User>("/users/me");
-    return response.data;
+    try {
+      const response = await api.get<{ user: User }>("/users/me");
+      const user = response.data.user;
+      
+      // Update local storage with fresh user data
+      if (user) {
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const updatedUser = {
+          ...currentUser,
+          ...user,
+          // Preserve the hasCompletedProfile flag if it exists
+          hasCompletedProfile: currentUser.hasCompletedProfile || user.hasCompletedProfile || false,
+          // Merge profile data if it exists
+          profile: {
+            ...currentUser.profile,
+            ...user.profile
+          }
+        };
+        
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        return updatedUser;
+      }
+      
+      return user;
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+      throw error;
+    }
   },
 
   // Get user profile (other user) 

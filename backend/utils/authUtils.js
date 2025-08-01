@@ -14,14 +14,14 @@ export const verifyToken = async (token) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(decoded.id);
 
     if (!user) {
       throw new Error("User not found");
     }
 
     return {
-      userId: decoded.userId,
+      userId: decoded.id,
       user: user,
     };
   } catch (error) {

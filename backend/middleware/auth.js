@@ -1,66 +1,53 @@
-import jwt from 'jsonwebtoken';
-import User from '../models/user.js';
+import {
+  authenticateToken as sharedAuth,
+  verifyToken as sharedVerifyToken,
+} from "../utils/authUtils.js";
+import User from "../models/user.js";
 
+// Use shared authentication logic
 export const authenticateToken = async (req, res, next) => {
   try {
-    // Get token from Authorization header
-    const authHeader = req.headers.authorization || req.headers.Authorization;
-    const token = authHeader?.split(' ')[1];
+    console.log("🔍 Verifying token..."); // Log the start of token verification
 
-    if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'No token provided' 
-      });
-    }
+    // Use shared authentication utility
+    await sharedAuth(req, res, next);
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Find user and attach to request
-    const user = await User.findById(decoded.id).select('-password');
-    
-    if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'User not found' 
-      });
-    }
-
-    req.user = user;
-    next();
+    console.log("✅ Token verified, user:", req.user?.name);
   } catch (error) {
-    console.error('Authentication error:', error);
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Token expired' 
+    console.error("Authentication error:", error);
+
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired",
       });
     }
-    
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid token' 
+
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token",
       });
     }
-    
-    res.status(500).json({ 
-      success: false, 
-      message: 'Authentication failed' 
+
+    res.status(500).json({
+      success: false,
+      message: "Authentication failed",
     });
   }
 };
+
+// Alias for backward compatibility
+export const verifyToken = authenticateToken;
 
 // Middleware to check if user is admin
 export const isAdmin = (req, res, next) => {
   if (req.user && req.user.isAdmin) {
     next();
   } else {
-    res.status(403).json({ 
-      success: false, 
-      message: 'Not authorized as an admin' 
+    res.status(403).json({
+      success: false,
+      message: "Not authorized as an admin",
     });
   }
 };
@@ -70,9 +57,9 @@ export const hasCompletedProfile = (req, res, next) => {
   if (req.user && req.user.hasCompletedProfile) {
     next();
   } else {
-    res.status(403).json({ 
-      success: false, 
-      message: 'Please complete your profile first' 
+    res.status(403).json({
+      success: false,
+      message: "Please complete your profile first",
     });
   }
 };
